@@ -1,6 +1,9 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Dungine
 {
@@ -14,14 +17,30 @@ namespace Dungine
             { 1,1,1,1,1,1,1,1 },
             { 1,0,0,0,1,1,1,1 },
             { 1,1,1,0,1,1,1,1 },
-            { 1,1,1,0,1,1,1,1 },
+            { 1,1,1,0,0,0,1,1 },
             { 1,1,1,0,0,0,1,1 },
             { 1,1,1,0,1,1,1,1 },
             { 1,1,1,1,1,1,1,1 }
         };
         Point playerPos = new Point(3, 6);
 
+        //████████
+        //████████
+        //█   ████
+        //███ ████
+        //███   ██
+        //███   ██
+        //███ ████
+        //████████
 
+        //████████
+        //████████
+        //█▒▒▒████
+        //███▒████
+        //███▒▒▒██
+        //███▒▒▒██
+        //███▒████
+        //████████
 
         public Game1()
         {
@@ -32,12 +51,38 @@ namespace Dungine
 
         protected override void Initialize()
         {
-            // TODO: Add your initialization logic here
-            for (int i = playerPos.Y; i >= 0; i--)
-            {
+            List<Point> check = new List<Point>();
+            check.Add(playerPos);
 
+            for (int i = 0; i < check.Count; i++)
+            {
+                map[check[i].Y, check[i].X] = 2;
+
+                if (check[i].Y - 1 <= 0) continue;
+
+                if (map[check[i].Y - 1, check[i].X] == 0)
+                {
+                    check.Add(new Point(check[i].X, check[i].Y - 1)); // top
+
+                    // only happens if top one is visible
+                    if (map[check[i].Y - 1, check[i].X + 1] == 0) // right
+                        check.Add(new Point(check[i].X + 1, check[i].Y - 1));
+                    if (map[check[i].Y - 1, check[i].X - 1] == 0) // left
+                        check.Add(new Point(check[i].X - 1, check[i].Y - 1));
+                }
             }
 
+            for (int y = 0; y < map.GetLength(0); y++)
+            {
+                for (int x = 0; x < map.GetLength(1); x++)
+                {
+                    char c = ' ';
+                    if (map[y, x] == 1) c = '█';
+                    if (map[y, x] == 2) c = '▒';
+                    Debug.Write(c);
+                }
+                Debug.Write(Environment.NewLine);
+            }
 
             base.Initialize();
         }

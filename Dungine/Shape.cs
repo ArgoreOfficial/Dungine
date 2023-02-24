@@ -16,23 +16,45 @@ namespace Dungine
 
         public Texture2D Texture;
         public Vector2 TextureOffset;
-
-        protected Shape(Vector2 position, float rotation, Texture2D texture, Vector2 textureOffset)
+        public Vector2 TextureScale;
+        protected Shape(Vector2 position, float rotation)
         {
             Position = position;
             Rotation = rotation;
-            Texture = texture;
-            TextureOffset = textureOffset;
+
         }
 
-
+        public void SetTexture(Texture2D texture, Vector2 textureOffset, Vector2 textureScale)
+        {
+            Texture = texture;
+            TextureOffset = textureOffset;
+            TextureScale = textureScale;
+        }
 
         /// <summary>
         /// returns the closest distance between a samplePoint and the shape
         /// </summary>
         /// <param name="samplePosition"></param>
         /// <returns></returns>
-        public abstract float SDF(Vector2 samplePosition);
+        public abstract float GetSDF(Vector2 samplePosition);
+
+        /// <summary>
+        /// returns the texture coordinate for a said pixel collumn
+        /// </summary>
+        /// <param name="samplePosition"></param>
+        /// <returns></returns>
+        public abstract Vector2 GetTextureCoordinates(Vector2 samplePosition);
+
+        public Vector2 GetNormal(Vector2 samplePosition)
+        {
+            float small = 0.01f; // a small number
+
+            // get normal data
+            float normalX = GetSDF(samplePosition + new Vector2(small, 0)) - GetSDF(samplePosition - new Vector2(small, 0));
+            float normalY = GetSDF(samplePosition + new Vector2(0, small)) - GetSDF(samplePosition - new Vector2(0, small));
+
+            return new Vector2(normalX, normalY) / small;
+        }
 
         // rotate and transform a vector by shape rotation and position
         protected Vector2 Transform(Vector2 samplePosition) 
@@ -42,12 +64,6 @@ namespace Dungine
             return translated; 
         }
 
-        protected Vector2 Untransform(Vector2 samplePosition)
-        {
-            Vector2 rotated = Rotate(samplePosition, -Rotation);
-            Vector2 translated = Translate(rotated, -Position);
-            return translated;
-        }
 
         // translate a vector
         protected Vector2 Translate(Vector2 samplePosition, Vector2 offset)
@@ -70,15 +86,22 @@ namespace Dungine
     {
         public float Radius;
 
-        public SDFCircle(Vector2 position, float rotation, Texture2D texture, Vector2 textureOffset, float radius) : base(position, rotation, texture, textureOffset)
+        public SDFCircle(Vector2 position, float rotation, float radius) : base(position, rotation)
         {
             Radius = radius;
         }
 
-        public override float SDF(Vector2 samplePosition)
+        public override float GetSDF(Vector2 samplePosition)
         {
             samplePosition = Transform(samplePosition);
             return samplePosition.Length() - Radius;
+        }
+
+        public override Vector2 GetTextureCoordinates(Vector2 samplePosition)
+        {
+            Vector2 p = Position - samplePosition; // relative position
+            float a = MathF.Atan(p.X / p.Y) + MathF.PI; // angle to position
+            return new Vector2(a / (MathF.PI) * 128, 0); // mapped to a vector
         }
     }
 
@@ -86,12 +109,12 @@ namespace Dungine
     {
         public Vector2 Size;
 
-        public SDFRectangle(Vector2 position, float rotation, Texture2D texture, Vector2 textureOffset, Vector2 size) : base(position, rotation, texture, textureOffset)
+        public SDFRectangle(Vector2 position, float rotation, Vector2 size) : base(position, rotation)
         {
             Size = size;
         }
 
-        public override float SDF(Vector2 samplePosition)
+        public override float GetSDF(Vector2 samplePosition)
         {
             samplePosition = Transform(samplePosition);
 
@@ -101,6 +124,18 @@ namespace Dungine
             float insideDistance = Math.Min(Math.Max(componentWiseEdgeDistance.X, componentWiseEdgeDistance.Y), 0);
             
             return outsideDistance + insideDistance;
+        }
+
+        public override Vector2 GetTextureCoordinates(Vector2 samplePosition)
+        {
+            Vector2 normal = GetNormal(samplePosition);
+
+            if(normal.X > 0.7853982f || normal.X < -0.7853982f)
+            {
+                return new Vector2(samplePosition.Y, 0);
+            }
+            
+            return new Vector2(samplePosition.X, 0);
         }
     }
 }

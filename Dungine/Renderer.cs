@@ -40,7 +40,7 @@ namespace Dungine
 
     public static class Renderer
     {
-
+        public static Texture2D MissingTexture;
         public static float RenderDistance = 500f;
         public static int FOV = 90;
         public static float ProjectionPlaneDist = 158f;
@@ -82,13 +82,12 @@ namespace Dungine
                     MathF.Sin(angle + CameraRotation));
 
 
-                Ray hit = Raymarch(shapes, CameraPosition, direction, 0.001f, RenderDistance);
+                Ray hit = Raymarch(shapes, CameraPosition, direction, 0.1f, RenderDistance);
                 float distance = Math.Min(hit.Distance, RenderDistance)
                                  * MathF.Cos(angle); // fix distortion
 
                 DrawSegment(sb, hit, angle, i);
             }
-
         }
 
 
@@ -116,25 +115,10 @@ namespace Dungine
                 // "march" ray position
                 currentPos += direction * distance;
                 totalDistance += distance;
-            
-                // get normal data
-                float normalX = closestShape.SDF(currentPos + new Vector2(0.01f, 0)) - closestShape.SDF(currentPos - new Vector2(0.01f, 0));
-                float normalY = closestShape.SDF(currentPos + new Vector2(0, 0.01f)) - closestShape.SDF(currentPos - new Vector2(0, 0.01f));
-
-                hitNormal = new Vector2(normalX, normalY) / 0.01f;
-                
-                if (closestShape is SDFCircle)
-                {
-                    Vector2 p = closestShape.Position - currentPos;
-                    float a = MathF.Atan(p.X / p.Y) + MathF.PI;
-                    UV = new Vector2(a * 32, 0);
-                }
-                else if (closestShape is SDFRectangle)
-                {
-                    UV = new Vector2(currentPos.X, 0);
-                }
             }
 
+            UV = closestShape.GetTextureCoordinates(currentPos);
+            hitNormal = closestShape.GetNormal(currentPos);
             return new Ray(closestShape, currentPos, totalDistance, Vector2.Normalize(hitNormal), UV);
         }
 
@@ -145,7 +129,7 @@ namespace Dungine
             Shape lastHit = null;
             for (int i = 0; i < shapes.Count; i++)
             {
-                float newdist = shapes[i].SDF(samplePosition);
+                float newdist = shapes[i].GetSDF(samplePosition);
                 if (newdist < dist)
                 {
                     dist = newdist;
@@ -173,8 +157,8 @@ namespace Dungine
                         256 - drawHeight / 2,
                         1,
                         drawHeight),
-                    new Rectangle((int)(ray.UV.X % 128f), 0, 1, 128),
-                    Color.White);// new Color(ray.HitNormal.X, ray.HitNormal.Y, 0));
+                    new Rectangle((int)((ray.UV.X / ray.Hit.TextureScale.X) % 128f), 0, 1, (int)(128f * ray.Hit.TextureScale.Y)),
+                    Color.White * (30f / ray.Distance) * (ray.HitNormal.X / 3f + 0.7f));// new Color(ray.HitNormal.X, ray.HitNormal.Y, 0));
             }
         }
 

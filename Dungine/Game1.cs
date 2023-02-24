@@ -2,71 +2,32 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Metadata;
+using System.Runtime.InteropServices;
 
 namespace Dungine
 {
-    public struct RenderWall
-    {
-        public Point RelativePosition;
-        public Point WorldPosition;
-        public int Side; // 0: right, 1: front, 2: left
-
-        public RenderWall(Point relativePosition, Point worldPosition, int side)
-        {
-            RelativePosition = relativePosition;
-            WorldPosition = worldPosition;
-            Side = side;
-        }
-    }
 
     public class Game1 : Game
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
-        int[,] map = {
-            { 1,1,1,1,1,1,1,1 },
-            { 1,1,1,1,1,0,0,1 },
-            { 1,0,0,0,1,0,0,1 },
-            { 1,1,1,0,1,0,0,1 },
-            { 1,1,1,0,0,0,0,1 },
-            { 1,1,1,0,0,0,0,1 },
-            { 1,1,1,0,1,1,1,1 },
-            { 1,1,1,1,1,1,1,1 }
-        };
-        Point PlayerPos = new Point(3, 6);
-        List<RenderWall> RenderWalls = new List<RenderWall>();
-        int MaxShadeDist = 6;
-        float MoveCooldown = 0;
+        List<Shape> shapes = new List<Shape>();
 
-        // viewtest map:
-        //████████
-        //█████  █
-        //█   █  █
-        //███ █  █
-        //███    █
-        //███    █
-        //███ ████
-        //████████
+        Vector2 PlayerPosition = new Vector2(83, 53);
+        float PlayerRotation = 0;
 
-        // viewtest result:
-        //████████
-        //█████▒▒█
-        //█ ▒▒█▒▒█
-        //███▒█▒▒█
-        //███▒▒▒ █
-        //███▒▒  █
-        //███▒████
-        //████████
+        Texture2D WallTexture;
+        Texture2D WindowTexture;
 
-        Texture2D LeftWall;
-        Texture2D RightWall;
-        Texture2D FrontWall;
-
+        float MovementSpeed = 50f;
+        
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -76,197 +37,98 @@ namespace Dungine
 
         protected override void Initialize()
         {
-            _graphics.PreferredBackBufferWidth = 256;
-            _graphics.PreferredBackBufferHeight = 256;
+            _graphics.PreferredBackBufferWidth = 512;
+            _graphics.PreferredBackBufferHeight = 512;
             _graphics.ApplyChanges();
+
+
 
             base.Initialize();
         }
         
-        public void VisibilityAlgorithm()
-        {
-            List<Point> check = new List<Point>();
-            RenderWalls.Clear();
-            check.Add(PlayerPos);
-
-            // get visible walls
-            for (int i = 0; i < check.Count; i++)
-            {
-                if (check[i].Y <= 0) continue;
-
-                // check if there's a wall in front
-                if (map[check[i].Y - 1, check[i].X] != 0)
-                {
-                    RenderWall rw = new RenderWall( // create renderwall
-                        check[i] - PlayerPos + new Point(0, 1),
-                        check[i],
-                        1);
-                    RenderWalls.Add(rw); // add to renderque
-                }
-                else
-                {
-                    check.Add(new Point(check[i].X, check[i].Y - 1));
-
-                    // check if there's a wall to the right
-                    if (map[check[i].Y - 1, check[i].X + 1] != 0) // if a wall is detected
-                    {
-                        RenderWall rw = new RenderWall( // create renderwall
-                            check[i] - PlayerPos,
-                            check[i],
-                            0);
-                        RenderWalls.Add(rw); // add to renderque
-                    }
-                    else { check.Add(new Point(check[i].X + 1, check[i].Y - 1)); }
-
-                    // check if there's a wall to the left
-                    if (map[check[i].Y - 1, check[i].X - 1] != 0) // if a wall is detected
-                    {
-                        RenderWall rw = new RenderWall( // create renderwall
-                            check[i] - PlayerPos,
-                            check[i],
-                            2);
-                        RenderWalls.Add(rw); // add to renderque
-                    }
-                    else { check.Add(new Point(check[i].X - 1, check[i].Y - 1)); } // add to checklist
-                }
-            }
-
-            RenderWalls = RenderWalls.OrderBy(w => w.RelativePosition.Y).ToList();
-        }
-
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            LeftWall = Content.Load<Texture2D>("Textures/Testing/left");
-            RightWall = Content.Load<Texture2D>("Textures/Testing/right");
-            FrontWall = Content.Load<Texture2D>("Textures/Testing/front");
+            WallTexture = Content.Load<Texture2D>("Textures/Testing/wall");
+            WindowTexture = Content.Load<Texture2D>("Textures/Testing/window");
+            
+            // needs to be after
+            shapes.Add(new SDFCircle(new Vector2(30, 30), 0f, WallTexture, new Vector2(), 10f));
+            shapes.Add(new SDFCircle(new Vector2(50, 30), 0f, WallTexture, new Vector2(), 15f));
+            shapes.Add(new SDFCircle(new Vector2(240, 140), 0f, WallTexture, new Vector2(), 15f));
+            shapes.Add(new SDFRectangle(new Vector2(90, 200), 0f, WindowTexture, new Vector2(), new Vector2(32, 64)));
+
+        }
+
+        protected void Input(GameTime gameTime)
+        {
+            KeyboardState key = Keyboard.GetState();
+            if (key.IsKeyDown(Keys.Escape))
+                Exit();
+
+            Vector2 playerDir = new Vector2(
+                MathF.Cos(PlayerRotation),
+                MathF.Sin(PlayerRotation));
+
+            if (key.IsKeyDown(Keys.W))
+            {
+                PlayerPosition += (float)gameTime.ElapsedGameTime.TotalSeconds * MovementSpeed * playerDir;
+            }
+            if (key.IsKeyDown(Keys.S))
+            {
+                PlayerPosition -= (float)gameTime.ElapsedGameTime.TotalSeconds * MovementSpeed * playerDir;
+            }
+            if (key.IsKeyDown(Keys.A))
+            {
+                PlayerRotation -= (float)gameTime.ElapsedGameTime.TotalSeconds * 2f;
+            }
+            if (key.IsKeyDown(Keys.D))
+            {
+                PlayerRotation += (float)gameTime.ElapsedGameTime.TotalSeconds * 2f;
+            }
         }
 
         protected override void Update(GameTime gameTime)
         {
-            if (MoveCooldown > 0) MoveCooldown -= (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            KeyboardState key = Keyboard.GetState();
-            if (key.IsKeyDown(Keys.Escape))
-                Exit();
-            
-            if(MoveCooldown <= 0 && key.IsKeyDown(Keys.W))
-            {
-                PlayerPos.Y--;
-                MoveCooldown = 0.3f;
-            }
-            if (MoveCooldown <= 0 && key.IsKeyDown(Keys.S))
-            {
-                PlayerPos.Y++;
-                MoveCooldown = 0.3f;
-            }
-            if (MoveCooldown <= 0 && key.IsKeyDown(Keys.A))
-            {
-                PlayerPos.X--;
-                MoveCooldown = 0.3f;
-            }
-            if (MoveCooldown <= 0 && key.IsKeyDown(Keys.D))
-            {
-                PlayerPos.X++;
-                MoveCooldown = 0.3f;
-            }
-
-            VisibilityAlgorithm();
-
+            Input(gameTime);
+            Renderer.SetCamera(PlayerPosition, PlayerRotation);
 
             base.Update(gameTime);
         }
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(Color.Black);
 
-            _spriteBatch.Begin();
-            
-            for (int i = 0; i < RenderWalls.Count; i++)
-            {
-                if (RenderWalls[i].Side == 0)
-                {
-                    DrawRightWall(RenderWalls[i].RelativePosition * new Point(1, -1));
-                }
-                else if (RenderWalls[i].Side == 1)
-                {
-                    DrawFrontWall(RenderWalls[i].RelativePosition * new Point(1, -1));
-                }
-                else if (RenderWalls[i].Side == 2)
-                {
-                    DrawLeftWall(RenderWalls[i].RelativePosition * new Point(1, -1));
-                }
-            }
-            /*
-            
-            DrawLeftWall(new Point(0, 0));
-            DrawLeftWall(new Point(0, 1));
-            DrawLeftWall(new Point(0, 2));
-            
-            DrawRightWall(new Point(1, 0));
-            DrawRightWall(new Point(1, 1));
-            DrawRightWall(new Point(1, 2));
+            _spriteBatch.Begin(SpriteSortMode.Deferred, null, SamplerState.PointClamp, null, null, null, null);
+            // Render world
+            Renderer.Render(_spriteBatch, shapes);
 
-            DrawFrontWall(new Point(0, 2));
-            DrawFrontWall(new Point(1, 2));
-            */
+
+
+            //  -- DEBUG STUFF -- //
+
+            // DEBUG: Draw world
+            Renderer.DrawShapes2D(_spriteBatch, shapes);
+
+            // DEBUG: Mouse distance
+            Closest closest = Renderer.GetClosest(Mouse.GetState().Position.ToVector2(), shapes);
+            _spriteBatch.DrawCircle(Mouse.GetState().Position.ToVector2(), closest.Distance, (int)Math.Abs(closest.Distance), Color.White);
+
+            // DEBUG: Draw camera direction
+            Vector2 playerDir = new Vector2(
+                MathF.Cos(PlayerRotation),
+                MathF.Sin(PlayerRotation));
+            _spriteBatch.DrawLine(PlayerPosition, PlayerPosition + playerDir * 24, Color.Red);
+
+            //  -- DEBUG STUFF -- //
+
+
+
             _spriteBatch.End();
 
             base.Draw(gameTime);
-        }
-
-        public void DrawLeftWall(Point localPos)
-        {
-            float pow = MathF.Pow(2, localPos.Y);
-            float posMultiplier = -2f / pow + 2f;
-            float c = (1f - (float)localPos.Y / (float)MaxShadeDist);
-
-            _spriteBatch.Draw(
-                    LeftWall,
-                    new Rectangle(
-                        (int)(LeftWall.Width * posMultiplier) + 32 * localPos.X,
-                        (int)(LeftWall.Height * posMultiplier) / 4,
-                        (int)(LeftWall.Width / pow),
-                        (int)(LeftWall.Height / pow)),
-                    new Color(c,c,c));
-        }
-
-        public void DrawRightWall(Point localPos)
-        {
-            float pow = MathF.Pow(2, localPos.Y);
-            float posMultiplier = -2f / pow + 2f;
-            int width = (int)(RightWall.Width / pow);
-            float c = (1f - (float)localPos.Y / (float)MaxShadeDist);
-
-            
-
-            _spriteBatch.Draw(
-                    RightWall,
-                    new Rectangle(
-                        256 - (int)(RightWall.Width * posMultiplier) + 32 * localPos.X - width,
-                        (int)(RightWall.Height * posMultiplier) / 4,
-                        width,
-                        (int)(RightWall.Height / pow)),
-                    new Color(c, c, c));
-        }
-
-        public void DrawFrontWall(Point localPos)
-        {
-            float pow = MathF.Pow(2, localPos.Y);
-            float posMultiplier = -2f / pow + 2f;
-            int width = (int)(FrontWall.Width / pow);
-            float c = (1f - (float)localPos.Y / (float)MaxShadeDist);
-
-            _spriteBatch.Draw(
-                    FrontWall,
-                    new Rectangle(
-                        (int)(LeftWall.Width * posMultiplier) + localPos.X * width + width/2,
-                        (int)(LeftWall.Height * posMultiplier) / 4 + width/2,
-                        width,
-                        (int)(FrontWall.Height / pow)),
-                    new Color(c, c, c));
         }
     }
 }

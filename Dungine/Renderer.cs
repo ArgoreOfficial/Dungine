@@ -82,7 +82,7 @@ namespace Dungine
                     MathF.Sin(angle + CameraRotation));
 
 
-                Ray hit = Raymarch(shapes, CameraPosition, direction, 0.1f, RenderDistance);
+                Ray hit = Raymarch(shapes, CameraPosition, direction, 0.01f, RenderDistance);
                 float distance = Math.Min(hit.Distance, RenderDistance)
                                  * MathF.Cos(angle); // fix distortion
 
@@ -126,18 +126,36 @@ namespace Dungine
         public static Closest GetClosest(Vector2 samplePosition, List<Shape> shapes)
         {
             float dist = float.MaxValue;
-            Shape lastHit = null;
+            Shape hit = null;
+
             for (int i = 0; i < shapes.Count; i++)
             {
-                float newdist = shapes[i].GetSDF(samplePosition);
-                if (newdist < dist)
+                for (int other = 0; other < shapes.Count; other++)
                 {
-                    dist = newdist;
-                    lastHit = shapes[i];
+                    if (i != other)
+                    {
+                        float csgdist = dist;
+                        if (shapes[i].CSGType == ShapeCSG.Union && shapes[other].CSGType == ShapeCSG.Difference)
+                        {
+                            csgdist = MathF.Min(dist, shapes[i].DifferenceWith(shapes[other], samplePosition));
+                            hit = csgdist != dist ? shapes[i] : hit;
+                        }
+                        else if (shapes[i].CSGType == ShapeCSG.Union && shapes[other].CSGType == ShapeCSG.Intersect)
+                        {
+                            csgdist = MathF.Min(dist, shapes[i].IntersectWith(shapes[other], samplePosition));
+                            hit = csgdist != dist ? shapes[i] : hit;
+                        }
+                        else if (shapes[i].CSGType == ShapeCSG.Union)
+                        {
+                            csgdist = MathF.Min(dist, shapes[i].GetSDF(samplePosition));
+                            hit = csgdist != dist ? shapes[i] : hit;
+                        }
+                        dist = csgdist;
+                    }
                 }
             }
             
-            return new Closest(dist, lastHit);
+            return new Closest(dist, hit);
         }
 
 
@@ -158,7 +176,7 @@ namespace Dungine
                         1,
                         drawHeight),
                     new Rectangle((int)((ray.UV.X / ray.Hit.TextureScale.X) % 128f), 0, 1, (int)(128f * ray.Hit.TextureScale.Y)),
-                    Color.White * (30f / ray.Distance) * (ray.HitNormal.X / 3f + 0.7f));// new Color(ray.HitNormal.X, ray.HitNormal.Y, 0));
+                    Color.White * (50f / ray.Distance) * (ray.HitNormal.X / 3f + 0.7f));// new Color(ray.HitNormal.X, ray.HitNormal.Y, 0));
             }
         }
 
@@ -168,10 +186,14 @@ namespace Dungine
             // draw shapes
             for (int i = 0; i < shapes.Count; i++)
             {
+                Color c = Color.LimeGreen;
+                if (shapes[i].CSGType == ShapeCSG.Intersect) c = Color.Yellow;
+                else if (shapes[i].CSGType == ShapeCSG.Difference) c = Color.Red;
+
                 if (shapes[i] is SDFCircle)
                 {
                     SDFCircle s = (SDFCircle)shapes[i];
-                    sb.DrawCircle(s.Position, s.Radius, 24, Color.Green);
+                    sb.DrawCircle(s.Position, s.Radius, 24, c);
                 }
                 else if (shapes[i] is SDFRectangle)
                 {
@@ -183,7 +205,7 @@ namespace Dungine
                         new Vector2( // right
                             r.Position.X + r.Size.X / 2,
                             r.Position.Y - r.Size.Y / 2),
-                        Color.Green);
+                        c);
 
                     sb.DrawLine( // bottom
                         new Vector2( // left
@@ -192,7 +214,7 @@ namespace Dungine
                         new Vector2( // right
                             r.Position.X + r.Size.X / 2,
                             r.Position.Y + r.Size.Y / 2),
-                        Color.Green);
+                        c);
 
                     sb.DrawLine( // left
                         new Vector2( // top
@@ -201,7 +223,7 @@ namespace Dungine
                         new Vector2( // bottom
                             r.Position.X - r.Size.X / 2,
                             r.Position.Y + r.Size.Y / 2),
-                        Color.Green);
+                        c);
 
                     sb.DrawLine( // right
                         new Vector2( // top
@@ -210,7 +232,7 @@ namespace Dungine
                         new Vector2( // bottom
                             r.Position.X + r.Size.X / 2,
                             r.Position.Y + r.Size.Y / 2),
-                        Color.Green);
+                        c);
                 }
             }
 

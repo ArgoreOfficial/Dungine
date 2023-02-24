@@ -4,11 +4,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Dungine
 {
+    public enum ShapeCSG
+    {
+        Union,
+        Intersect,
+        Difference
+    }
+
     public abstract class Shape
     {
         public Vector2 Position;
@@ -17,11 +25,13 @@ namespace Dungine
         public Texture2D Texture;
         public Vector2 TextureOffset;
         public Vector2 TextureScale;
+
+        public ShapeCSG CSGType = ShapeCSG.Union;
+
         protected Shape(Vector2 position, float rotation)
         {
             Position = position;
             Rotation = rotation;
-
         }
 
         public void SetTexture(Texture2D texture, Vector2 textureOffset, Vector2 textureScale)
@@ -38,12 +48,14 @@ namespace Dungine
         /// <returns></returns>
         public abstract float GetSDF(Vector2 samplePosition);
 
+
         /// <summary>
         /// returns the texture coordinate for a said pixel collumn
         /// </summary>
         /// <param name="samplePosition"></param>
         /// <returns></returns>
         public abstract Vector2 GetTextureCoordinates(Vector2 samplePosition);
+
 
         public Vector2 GetNormal(Vector2 samplePosition)
         {
@@ -55,6 +67,7 @@ namespace Dungine
 
             return new Vector2(normalX, normalY) / small;
         }
+
 
         // rotate and transform a vector by shape rotation and position
         protected Vector2 Transform(Vector2 samplePosition) 
@@ -71,6 +84,7 @@ namespace Dungine
             return samplePosition - offset;
         }
 
+
         // rotate a vector
         Vector2 Rotate(Vector2 samplePosition, float rotation)
         {
@@ -78,6 +92,24 @@ namespace Dungine
             float sine = MathF.Sin(angle);
             float cosine = MathF.Cos(angle);
             return new Vector2(cosine * samplePosition.X + sine * samplePosition.Y, cosine * samplePosition.Y - sine * samplePosition.X);
+        }
+
+
+        // CSG Operations //
+
+        public float IntersectWith(Shape other, Vector2 samplePoint)
+        {
+            return MathF.Max(GetSDF(samplePoint), other.GetSDF(samplePoint));
+        }
+
+        public float DifferenceWith(Shape other, Vector2 samplePoint)
+        {
+            return MathF.Max(GetSDF(samplePoint), -other.GetSDF(samplePoint));
+        }
+
+        public float UnionWith(Shape other, Vector2 samplePoint)
+        {
+            return MathF.Min(GetSDF(samplePoint), other.GetSDF(samplePoint));
         }
     }
 

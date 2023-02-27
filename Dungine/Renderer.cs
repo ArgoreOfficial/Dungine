@@ -130,28 +130,21 @@ namespace Dungine
 
             for (int i = 0; i < shapes.Count; i++)
             {
-                for (int other = 0; other < shapes.Count; other++)
+                float objectDist = shapes[i].GetSDF(samplePosition);
+                for (int diff = 0; diff < shapes[i].Differences.Count; diff++)
                 {
-                    if (i != other)
-                    {
-                        float csgdist = dist;
-                        if (shapes[i].CSGType == ShapeCSG.Union && shapes[other].CSGType == ShapeCSG.Difference)
-                        {
-                            csgdist = MathF.Min(dist, shapes[i].DifferenceWith(shapes[other], samplePosition));
-                            hit = csgdist != dist ? shapes[i] : hit;
-                        }
-                        else if (shapes[i].CSGType == ShapeCSG.Union && shapes[other].CSGType == ShapeCSG.Intersect)
-                        {
-                            csgdist = MathF.Min(dist, shapes[i].IntersectWith(shapes[other], samplePosition));
-                            hit = csgdist != dist ? shapes[i] : hit;
-                        }
-                        else if (shapes[i].CSGType == ShapeCSG.Union)
-                        {
-                            csgdist = MathF.Min(dist, shapes[i].GetSDF(samplePosition));
-                            hit = csgdist != dist ? shapes[i] : hit;
-                        }
-                        dist = csgdist;
-                    }
+                    objectDist = MathF.Max(objectDist, Shape.Difference(shapes[i], shapes[i].Differences[diff], samplePosition));
+                }
+                for (int inter = 0; inter < shapes[i].Intersections.Count; inter++)
+                {
+                    objectDist = MathF.Max(objectDist, Shape.Intersect(shapes[i], shapes[i].Intersections[inter], samplePosition));
+                }
+                
+
+                if (objectDist < dist)
+                {
+                    dist = objectDist;
+                    hit = shapes[i];
                 }
             }
             
@@ -175,7 +168,11 @@ namespace Dungine
                         256 - drawHeight / 2,
                         1,
                         drawHeight),
-                    new Rectangle((int)((ray.UV.X / ray.Hit.TextureScale.X) % 128f), 0, 1, (int)(128f * ray.Hit.TextureScale.Y)),
+                    new Rectangle(
+                        (int)(ray.UV.X / ray.Hit.TextureScale.X % 128f),
+                        (int)(ray.UV.Y / ray.Hit.TextureScale.Y % 128f), 
+                        1, 
+                        (int)(128f * ray.Hit.TextureScale.Y)),
                     Color.White * (50f / ray.Distance) * (ray.HitNormal.X / 3f + 0.7f));// new Color(ray.HitNormal.X, ray.HitNormal.Y, 0));
             }
         }
@@ -187,9 +184,6 @@ namespace Dungine
             for (int i = 0; i < shapes.Count; i++)
             {
                 Color c = Color.LimeGreen;
-                if (shapes[i].CSGType == ShapeCSG.Intersect) c = Color.Yellow;
-                else if (shapes[i].CSGType == ShapeCSG.Difference) c = Color.Red;
-
                 if (shapes[i] is SDFCircle)
                 {
                     SDFCircle s = (SDFCircle)shapes[i];

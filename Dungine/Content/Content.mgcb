@@ -13,6 +13,13 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin NewRodin.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:NewRodin.spritefont
+
 #begin Textures/MissingTexture.png
 /importer:TextureImporter
 /processor:TextureProcessor

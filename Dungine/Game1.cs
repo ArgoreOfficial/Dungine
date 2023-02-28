@@ -117,6 +117,7 @@ namespace Dungine
                 PlayerPosition += new Vector2(-playerDir.Y, playerDir.X) * MovementSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
 
+            /*
             // snap rotation
             if (key.IsKeyDown(Keys.Right))
             {
@@ -133,9 +134,9 @@ namespace Dungine
             {
                 CanRotate = true;
             }
+            */
 
-
-            /*
+            
             if (key.IsKeyUp(Keys.LeftShift) && IsActive)
             {
                 float mouseDeltaX = (mouse.Position.X - PrevMousePosition.X);
@@ -143,7 +144,7 @@ namespace Dungine
 
                 Mouse.SetPosition(_graphics.PreferredBackBufferWidth / 2, _graphics.PreferredBackBufferHeight / 2);
             }
-            */
+            
         }
 
         protected override void Update(GameTime gameTime)
@@ -157,6 +158,7 @@ namespace Dungine
             shapes[1].TextureOffset.Y -= (float)gameTime.ElapsedGameTime.TotalSeconds * 60f;
 
             shapes[0].Position.X = 128 + MathF.Sin((float)gameTime.TotalGameTime.TotalSeconds) * 30f;
+            shapes[0].Rotation += (float)gameTime.ElapsedGameTime.TotalSeconds * 0.1f;
 
             base.Update(gameTime);
         }

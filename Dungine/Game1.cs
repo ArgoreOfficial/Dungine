@@ -21,8 +21,8 @@ namespace Dungine
 
         List<Shape> shapes = new List<Shape>();
 
-        Vector2 PlayerPosition = new Vector2(83, 53);
-        float PlayerRotation = 0;
+        Vector2 PlayerPosition = new Vector2(180, 150);
+        float PlayerRotation = 3.141f;
 
         Texture2D WallTexture;
         Texture2D WindowTexture;
@@ -68,12 +68,12 @@ namespace Dungine
             //shapes.Add(new SDFCircle(new Vector2(150, 128), 0f, 15f));
             
             shapes.Add(new SDFRectangle(new Vector2(128, 128), 0f, new Vector2(32, 32)));
-            //shapes.Last().SetTexture(WallTexture, new Vector2(), new Vector2(0.5f, 2));
+            shapes.Last().SetTexture(WindowTexture, new Vector2(), new Vector2(1f, 1f));
             shapes.Last().Differences.Add(new SDFCircle(new Vector2(16, 16), 0f, 4f));
             shapes.Last().Differences.Add(new SDFCircle(new Vector2(-16, 16), 0f, 4f));
             shapes.Last().Differences.Add(new SDFCircle(new Vector2(16, -16), 0f, 4f));
             shapes.Last().Differences.Add(new SDFCircle(new Vector2(-16, -16), 0f, 4f));
-
+            
             
             shapes.Add(new SDFCircle(new Vector2(128, 172), 0, 16f));
             shapes.Last().SetTexture(WindowTexture, new Vector2(), new Vector2(0.5f, 2));
@@ -152,13 +152,14 @@ namespace Dungine
             Input(gameTime);
             Renderer.SetCamera(PlayerPosition, PlayerRotation);
 
-            
+
             // cylinder movement
             shapes[1].TextureOffset.X += (float)gameTime.ElapsedGameTime.TotalSeconds * 30f;
             shapes[1].TextureOffset.Y -= (float)gameTime.ElapsedGameTime.TotalSeconds * 60f;
 
-            shapes[0].Position.X = 128 + MathF.Sin((float)gameTime.TotalGameTime.TotalSeconds) * 30f;
-            shapes[0].Rotation += (float)gameTime.ElapsedGameTime.TotalSeconds * 0.1f;
+            //shapes[0].Position.X = 128 + MathF.Sin((float)gameTime.TotalGameTime.TotalSeconds) * 30f;
+            //shapes[0].Position.Y = 128 + MathF.Cos((float)gameTime.TotalGameTime.TotalSeconds) * 30f;
+            //shapes[0].Rotation -= (float)gameTime.ElapsedGameTime.TotalSeconds / 10f;
 
             base.Update(gameTime);
         }

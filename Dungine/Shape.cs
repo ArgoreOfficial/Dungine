@@ -68,7 +68,7 @@ namespace Dungine
             float normalX = GetSDF(samplePosition + new Vector2(small, 0)) - GetSDF(samplePosition - new Vector2(small, 0));
             float normalY = GetSDF(samplePosition + new Vector2(0, small)) - GetSDF(samplePosition - new Vector2(0, small));
 
-            return new Vector2(normalX, normalY) / small;
+            return Vector2.Normalize(new Vector2(normalX, normalY) / small);
         }
 
 
@@ -82,14 +82,14 @@ namespace Dungine
 
 
         // translate a vector
-        protected Vector2 Translate(Vector2 samplePosition, Vector2 offset)
+        public static Vector2 Translate(Vector2 samplePosition, Vector2 offset)
         {
             return samplePosition - offset;
         }
 
 
         // rotate a vector
-        Vector2 Rotate(Vector2 samplePosition, float rotation)
+        public static Vector2 Rotate(Vector2 samplePosition, float rotation)
         {
             float angle = rotation * MathF.PI * 2 * -1;
             float sine = MathF.Sin(angle);
@@ -102,18 +102,18 @@ namespace Dungine
 
         public static float Intersect(Shape a, Shape b, Vector2 samplePoint)
         {
-            return MathF.Max(a.GetSDF(samplePoint), b.GetSDF(samplePoint - a.Position));
+            return MathF.Max(a.GetSDF(samplePoint), b.GetSDF(Rotate(samplePoint - a.Position, a.Rotation)));
         }
 
         public static float Difference(Shape a, Shape b, Vector2 samplePoint)
         {
-            return MathF.Max(a.GetSDF(samplePoint), -b.GetSDF(samplePoint - a.Position));
+            return MathF.Max(a.GetSDF(samplePoint), -b.GetSDF(Rotate(samplePoint - a.Position, a.Rotation)));
         }
 
         // I don't need this
         public static float Union(Shape a, Shape b, Vector2 samplePoint)
         {
-            return MathF.Min(a.GetSDF(samplePoint), b.GetSDF(samplePoint - a.Position));
+            return MathF.Min(a.GetSDF(samplePoint), b.GetSDF(Rotate(samplePoint - a.Position, a.Rotation)));
         }
     }
 
@@ -166,58 +166,19 @@ namespace Dungine
 
         public override Vector2 GetTextureCoordinates(Vector2 samplePosition)
         {
-            Vector2 normal = GetNormal(samplePosition);
+            Vector2 normal = GetNormal(samplePosition); // get normal
 
-            if(normal.X > 0.7853982f || normal.X < -0.7853982f)
+            Vector2 p = Rotate(Position - samplePosition, Rotation); // relative position
+            float a = MathF.Atan(p.X / p.Y) + 0.78f; // angle to position
+            return new Vector2(a / (MathF.PI / 2f) * 128, 0) + TextureOffset; // mapped to a vector
+
+            /*
+            if (direction.X > 0.7853982f || direction.X < -0.7853982f)
             {
                 return new Vector2(samplePosition.Y - Position.Y, 0);
             }
             
-            return new Vector2(samplePosition.X - Position.X, 0) + TextureOffset;
-        }
-    }
-
-    public class SDFMandelbrot : Shape
-    {
-        public SDFMandelbrot(Vector2 position, float rotation) : base(position, rotation)
-        {
-
-        }
-
-        public override float GetSDF(Vector2 samplePosition)
-        {
-
-            // iterate
-            float di = 1.0f;
-            Vector2 z = new Vector2(0.0f);
-            float m2 = 0.0f;
-            Vector2 dz = new Vector2(0.0f);
-            for (int i = 0; i < 300; i++)
-            {
-                if (m2 > 1024.0) { di = 0.0f; break; }
-
-                // Z' -> 2·Z·Z' + 1
-                dz = 2f * new Vector2(z.X * dz.X - z.Y * dz.Y, z.X * dz.Y + z.Y * dz.X) + new Vector2(1f, 0f);
-
-                // Z -> Z² + c			
-                z = new Vector2(z.X * z.X - z.Y * z.Y, 2.0f * z.X * z.Y) + samplePosition;
-
-                m2 = Vector2.Dot(z, z);
-            }
-
-            // distance	
-            // d(c) = |Z|·log|Z|/|Z'|
-            float d = 0.5f * MathF.Sqrt(Vector2.Dot(z, z) / Vector2.Dot(dz, dz)) * MathF.Log(Vector2.Dot(z, z));
-            if (di > 0.5) d = 0f;
-
-
-            return d;
-
-        }
-
-        public override Vector2 GetTextureCoordinates(Vector2 samplePosition)
-        {
-            return new Vector2(0, 0);
+            return new Vector2(samplePosition.X - Position.X, 0) + TextureOffset;*/
         }
     }
 }

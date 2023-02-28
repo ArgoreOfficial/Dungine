@@ -159,7 +159,7 @@ namespace Dungine
             
             if (distance < RenderDistance * MathF.Cos(angle))
             {
-                int drawHeight = (int)(ProjectionPlaneDist * (64f / distance));
+                int drawHeight = (int)(ProjectionPlaneDist * (56f / distance));
                 
                 sb.Draw(
                     ray.Hit.Texture,
